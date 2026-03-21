@@ -1,0 +1,13 @@
+# 二进制文件
+proxy-monitor
+proxy-monitor-*
+dist/
+
+# Go
+*.exe
+*.test
+*.out
+
+# OS
+.DS_Store
+.workbuddy/
