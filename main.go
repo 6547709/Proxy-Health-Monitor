@@ -16,7 +16,7 @@ import (
 // 版本信息
 // =============================================================================
 
-const Version = "2.1.0"
+const Version = "2.1.2"
 
 // =============================================================================
 // JSON 输出结构（供程序调用）
@@ -236,18 +236,28 @@ func runWatch(config AppConfig) {
 	for {
 		regions, stats, err := doCheck(config)
 		if err != nil {
-			clearScreen()
-			renderError(err.Error())
-			fmt.Printf("  %s%d 秒后重试...%s\n", colorGray, config.Interval, colorReset)
+			if config.JSONOutput {
+				fmt.Printf(`{"error":"%s"}`+"\n", err.Error())
+			} else {
+				clearScreen()
+				renderError(err.Error())
+				fmt.Printf("  %s%d 秒后重试...%s\n", colorGray, config.Interval, colorReset)
+			}
 		} else {
-			updateTime := time.Now().Format("15:04:05")
-			renderDashboard(regions, stats, config.SubscriptionURL, Version, updateTime, config.Interval, true)
+			if config.JSONOutput {
+				printJSON(regions, stats)
+			} else {
+				updateTime := time.Now().Format("15:04:05")
+				renderDashboard(regions, stats, config.SubscriptionURL, Version, updateTime, config.Interval, true)
+			}
 		}
 
 		// 等待刷新间隔或退出信号
 		select {
 		case <-sigCh:
-			fmt.Printf("\n  %s👋 再见！%s\n\n", colorCyan, colorReset)
+			if !config.JSONOutput {
+				fmt.Printf("\n  %s👋 再见！%s\n\n", colorCyan, colorReset)
+			}
 			return
 		case <-time.After(time.Duration(config.Interval) * time.Second):
 			// 继续下一轮
@@ -258,7 +268,9 @@ func runWatch(config AppConfig) {
 // doCheck 执行完整的检测流程
 func doCheck(config AppConfig) ([]RegionData, NodeStats, error) {
 	// 第一步：获取订阅
-	fmt.Printf("\n  %s📡 正在获取订阅...%s", colorCyan, colorReset)
+	if !config.JSONOutput {
+		fmt.Printf("\n  %s📡 正在获取订阅...%s", colorCyan, colorReset)
+	}
 	data, err := fetchSubscription(config.SubscriptionURL, config.Timeout*2)
 	if err != nil {
 		return nil, NodeStats{}, err
@@ -269,11 +281,17 @@ func doCheck(config AppConfig) ([]RegionData, NodeStats, error) {
 	if err != nil {
 		return nil, NodeStats{}, err
 	}
-	fmt.Printf("\r  %s📡 获取到 %d 个节点，开始检测...%s\n", colorCyan, len(nodes), colorReset)
+	if !config.JSONOutput {
+		fmt.Printf("\r  %s📡 获取到 %d 个节点，开始检测...%s\n", colorCyan, len(nodes), colorReset)
+	}
 
 	// 第三步：并发检测
 	timeout := time.Duration(config.Timeout) * time.Second
-	results := checkAllNodes(nodes, config.Concurrent, timeout, renderProgress)
+	var progressFn func(done, total int)
+	if !config.JSONOutput {
+		progressFn = renderProgress
+	}
+	results := checkAllNodes(nodes, config.Concurrent, timeout, progressFn)
 
 	// 第四步：区域分组
 	regions := groupByRegion(results)
