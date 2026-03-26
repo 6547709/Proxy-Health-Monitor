@@ -88,7 +88,7 @@ func groupByRegion(results []CheckResult) []RegionData {
 			if items[i].Category != "fault" && items[j].Category == "fault" {
 				return true
 			}
-			return items[i].Latency < items[j].Latency
+			return items[i].TCPPing < items[j].TCPPing
 		})
 
 		// 统计

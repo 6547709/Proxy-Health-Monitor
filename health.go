@@ -55,7 +55,8 @@ func checkNode(node ProxyNode, timeout time.Duration) CheckResult {
 	}
 
 	result.Latency = latency
-	result.Category = categorizeDelay(latency)
+	// 采用 TCPPing 作为感官上的整体健康度分类指标，与原生 OpenClash 体验保持一致
+	result.Category = categorizeDelay(result.TCPPing)
 
 	return result
 }
