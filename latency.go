@@ -3,13 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/metacubex/mihomo/adapter"
-	C "github.com/metacubex/mihomo/constant"
 )
 
 // =============================================================================
@@ -22,50 +18,34 @@ const (
 )
 
 // testProxyLatency 使用 mihomo 的代理适配器，通过代理访问 generate_204 测量延迟
-func testProxyLatency(rawConfig map[string]any, timeout time.Duration) (int, error) {
+func testProxyLatency(rawConfig map[string]any, resolvedIP string, timeout time.Duration) (int, error) {
+	// 使用已经解析好的 IP 替换域名，避免 mihomo 内部重复进行无缓存的 DNS 解析
+	// 这通常是导致 CLI 测速比常驻运行的 Router 慢 100ms 左右的主要原因
+	if resolvedIP != "" {
+		// copy the map to avoid modifying the original
+		newConfig := make(map[string]any)
+		for k, v := range rawConfig {
+			newConfig[k] = v
+		}
+		newConfig["server"] = resolvedIP
+		rawConfig = newConfig
+	}
+
 	// 用 mihomo 从原始配置创建代理适配器
 	proxy, err := adapter.ParseProxy(rawConfig)
 	if err != nil {
 		return 0, fmt.Errorf("创建代理适配器失败: %w", err)
 	}
 
-	// 创建通过代理的 HTTP Transport
-	transport := &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			host, portStr, _ := net.SplitHostPort(addr)
-			port, _ := strconv.Atoi(portStr)
-			metadata := &C.Metadata{
-				NetWork: C.TCP,
-				Host:    host,
-				DstPort: uint16(port),
-			}
-			return proxy.DialContext(ctx, metadata)
-		},
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   timeout,
-		// 不跟随重定向
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
-	// 测量通过代理访问 generate_204 的延迟
-	start := time.Now()
-	resp, err := client.Get(testURL)
-	elapsed := time.Since(start)
-
+	// 使用 mihomo 原生的 URLTest 进行测速（与 OpenClash 方法完全一致：包括使用 HTTP HEAD 替代 GET，以及相同的计时起止点）
+	// expectedStatus 传 nil 表示接受所有 2xx/3xx (204)
+	delay, err := proxy.URLTest(ctx, testURL, nil)
 	if err != nil {
 		return 0, fmt.Errorf("代理延迟测试失败: %w", err)
 	}
-	defer resp.Body.Close()
 
-	// 204 No Content 或 200 OK 都算成功
-	if resp.StatusCode != 204 && resp.StatusCode != 200 {
-		return 0, fmt.Errorf("非预期状态码: %d", resp.StatusCode)
-	}
-
-	return int(elapsed.Milliseconds()), nil
+	return int(delay), nil
 }

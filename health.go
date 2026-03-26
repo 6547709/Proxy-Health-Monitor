@@ -43,7 +43,8 @@ func checkNode(node ProxyNode, timeout time.Duration) CheckResult {
 	result.TCPConnected = true
 
 	// 第三步：代理延迟测试（通过代理访问 generate_204）
-	latency, err := testProxyLatency(node.RawConfig, timeout)
+	// 将解析好的 IP 传入，避免 mihomo 内置重新解析 DNS 导致的额外延迟
+	latency, err := testProxyLatency(node.RawConfig, result.ResolvedIPs[0], timeout)
 	if err != nil {
 		result.Error = fmt.Sprintf("代理测试失败: %v", err)
 		// TCP 是通的但代理不工作，标记为故障
