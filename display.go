@@ -210,16 +210,16 @@ func renderNode(r CheckResult) {
 		dnsStatus = fmt.Sprintf("%s✗%s", colorRed, colorReset)
 	}
 
-	// TCP 状态
-	tcpStatus := fmt.Sprintf("%s✓%s", colorGreen, colorReset)
-	if !r.TCPConnected {
-		tcpStatus = fmt.Sprintf("%s✗%s", colorRed, colorReset)
+	// TCP 状态与延迟
+	tcpStatus := fmt.Sprintf("%s✗%s", colorRed, colorReset)
+	if r.TCPConnected {
+		tcpStatus = fmt.Sprintf("%sTCP %3dms%s", colorCyan, r.TCPPing, colorReset)
 	}
 
-	// 延迟
-	latencyStr := "  ---"
+	// 延迟（HTTP）
+	latencyStr := "HTTP   ---"
 	if r.TCPConnected && r.Latency > 0 {
-		latencyStr = fmt.Sprintf("%4dms", r.Latency)
+		latencyStr = fmt.Sprintf("HTTP %4dms", r.Latency)
 	}
 
 	// 分类图标
@@ -245,7 +245,7 @@ func renderNode(r CheckResult) {
 		ipStr = fmt.Sprintf(" %s[%s]%s", colorGray, ip, colorReset)
 	}
 
-	fmt.Printf("  %s  DNS %s  TCP %s  %s%s%s  %s%s\n",
+	fmt.Printf("  %s  DNS %s  %s  %s%s%s  %s%s\n",
 		name, dnsStatus, tcpStatus, clr, latencyStr, colorReset, catIcon, ipStr)
 }
 

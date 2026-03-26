@@ -45,6 +45,7 @@ type JSONNodeData struct {
 	DNSResolved  bool     `json:"dns_resolved"`
 	ResolvedIPs  []string `json:"resolved_ips,omitempty"`
 	TCPConnected bool     `json:"tcp_connected"`
+	TCPPing      int      `json:"tcp_ping"`
 	Latency      int      `json:"latency"`
 	Category     string   `json:"category"`
 	Error        string   `json:"error,omitempty"`
@@ -72,6 +73,7 @@ func printJSON(regions []RegionData, stats NodeStats) {
 				DNSResolved:  n.DNSResolved,
 				ResolvedIPs:  n.ResolvedIPs,
 				TCPConnected: n.TCPConnected,
+				TCPPing:      n.TCPPing,
 				Latency:      n.Latency,
 				Category:     n.Category,
 				Error:        n.Error,

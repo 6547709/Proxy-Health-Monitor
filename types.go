@@ -19,7 +19,8 @@ type CheckResult struct {
 	DNSResolved  bool     // DNS 是否解析成功
 	ResolvedIPs  []string // 解析到的 IP 列表
 	TCPConnected bool     // TCP 是否连通
-	Latency      int      // 延迟 ms（TCP连接耗时）
+	TCPPing      int      // TCP 握手延迟 (ms)
+	Latency      int      // HTTP 代理延迟 ms（URLTest端到端测试）
 	Category     string   // fast / normal / high_latency / fault
 	Error        string   // 错误信息（如有）
 }

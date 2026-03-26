@@ -34,11 +34,13 @@ func checkNode(node ProxyNode, timeout time.Duration) CheckResult {
 
 	// 第二步：TCP 连通检测
 	address := net.JoinHostPort(node.Server, fmt.Sprintf("%d", node.Port))
+	startTcp := time.Now()
 	conn, err := net.DialTimeout("tcp", address, timeout)
 	if err != nil {
 		result.Error = fmt.Sprintf("TCP连接失败: %v", err)
 		return result
 	}
+	result.TCPPing = int(time.Since(startTcp).Milliseconds())
 	conn.Close()
 	result.TCPConnected = true
 
